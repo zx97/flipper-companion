@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="crates/flipper-gui/ui/icon.svg" width="96" alt="flipper-companion application icon">
+</p>
+
 # flipper-companion
 
 A modern, memory-safe desktop and command-line companion for the
