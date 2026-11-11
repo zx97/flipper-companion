@@ -10,3 +10,6 @@
 
 # Local list of personal markers for the pre-push check
 .personal-markers
+
+# Local agent state
+.opencode/
