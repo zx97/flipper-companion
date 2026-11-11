@@ -1,0 +1,92 @@
+stages:
+  - test
+  - deploy
+  - release
+
+test:
+  stage: test
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends curl ca-certificates git build-essential pkg-config python3
+      libssl-dev libudev-dev libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
+    - curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+    - . "$HOME/.cargo/env"
+  script:
+    - python3 tools/check_anonymity.py
+    - cargo test --workspace --locked
+    - cargo build --release --locked --workspace
+
+# ---------------------------------------------------------------------------
+# Release artefacts (tag only, amd64). The GitHub workflow also builds arm64.
+# ---------------------------------------------------------------------------
+package:
+  stage: deploy
+  image: ubuntu:24.04
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends curl ca-certificates git build-essential pkg-config python3 xz-utils file
+      libssl-dev libudev-dev libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
+    - curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+    - . "$HOME/.cargo/env"
+  script:
+    - set -euo pipefail
+    - . "$HOME/.cargo/env"
+    - python3 tools/check_anonymity.py
+    - cargo test --workspace --locked
+    - cargo build --release --locked --workspace
+    - VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
+    - NAME="flipper-companion-$VERSION-linux-amd64"
+    - mkdir -p dist "$NAME"
+    - cp target/release/flipper target/release/flipper-companion "$NAME/"
+    - cp LICENSE README.md CHANGELOG.md NOTICE.md "$NAME/"
+    - cp -r docs "$NAME/docs"
+    - cp udev/42-flipperzero.rules "$NAME/udev.rules"
+    - tar -czf "dist/$NAME.tar.gz" "$NAME"
+    - curl -sSL -o nfpm.tgz "https://github.com/goreleaser/nfpm/releases/download/v2.48.0/nfpm_2.48.0_Linux_x86_64.tar.gz"
+    - tar -xzf nfpm.tgz nfpm
+    - install -m 0755 nfpm /usr/local/bin/nfpm
+    - mkdir -p pkgroot
+    - cp target/release/flipper target/release/flipper-companion pkgroot/
+    - cp packaging/flipper-companion.desktop packaging/postinstall.sh pkgroot/
+    - cp crates/flipper-gui/ui/icon.svg pkgroot/flipper-companion.svg
+    - cp udev/42-flipperzero.rules pkgroot/udev.rules
+    - cp LICENSE README.md CHANGELOG.md pkgroot/
+    - cp -r docs pkgroot/docs
+    - (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH=amd64 nfpm package -f "$CI_PROJECT_DIR/packaging/nfpm.yaml" -p deb -t "$CI_PROJECT_DIR/dist/")
+    - (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH=x86_64 nfpm package -f "$CI_PROJECT_DIR/packaging/nfpm.yaml" -p rpm -t "$CI_PROJECT_DIR/dist/")
+    - (cd dist && sha256sum ./*.tar.gz ./*.deb ./*.rpm > SHA256SUMS)
+    - |
+      for f in dist/*.tar.gz dist/*.deb dist/*.rpm dist/SHA256SUMS; do
+        curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --upload-file "$f" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/flipper-companion/$VERSION/$(basename "$f")"
+      done
+  artifacts:
+    paths:
+      - dist/
+    expire_in: never
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
+  script:
+    - |
+      set -euo pipefail
+      VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
+      TAG="${CI_COMMIT_TAG:-v$VERSION}"
+      BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/flipper-companion/$VERSION"
+      release-cli create \
+        --name "flipper-companion $VERSION" \
+        --tag-name "$TAG" \
+        --description "Release $VERSION. See CHANGELOG.md and README.md." \
+        --assets-link "{\"name\":\"flipper-companion-$VERSION-linux-amd64.tar.gz\",\"url\":\"$BASE/flipper-companion-$VERSION-linux-amd64.tar.gz\"}" \
+        --assets-link "{\"name\":\"flipper-companion_${VERSION}-1_amd64.deb\",\"url\":\"$BASE/flipper-companion_${VERSION}-1_amd64.deb\"}" \
+        --assets-link "{\"name\":\"flipper-companion-${VERSION}-1.x86_64.rpm\",\"url\":\"$BASE/flipper-companion-${VERSION}-1.x86_64.rpm\"}" \
+        --assets-link "{\"name\":\"SHA256SUMS\",\"url\":\"$BASE/SHA256SUMS\"}"

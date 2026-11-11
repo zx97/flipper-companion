@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Flipper Companion
+Comment=Desktop companion for the Flipper Zero
+Exec=flipper-companion
+Icon=flipper-companion
+Terminal=false
+Categories=Utility;System;

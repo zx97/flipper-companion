@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb066"/>
+      <stop offset="0.55" stop-color="#ff8200"/>
+      <stop offset="1" stop-color="#d95f00"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff9d3c"/>
+      <stop offset="1" stop-color="#e0640a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded app tile -->
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#bg)"/>
+
+  <!-- Slim handheld silhouette: pointed left end, bevelled top-right
+       corner and rounded bottom-right corner. -->
+  <g transform="translate(133 0) scale(1.15 1) translate(-133 0)">
+    <path d="M88.6 84.7
+             Q96 78 106 78
+             L174 78
+             Q184 78 191.1 85.1
+             L200.9 94.9
+             Q208 102 208 112
+             L208 140
+             A20 20 0 0 1 188 162
+             L88 162
+             Q78 162 72.5 153.7
+             L55.5 128.3
+             Q50 120 57.4 113.3
+             Z" fill="#ffffff"/>
+
+    <!-- Screen -->
+    <rect x="86" y="90" width="60" height="50" rx="7" fill="#17171a"/>
+  </g>
+
+  <!-- Directional pad (kept circular) -->
+  <circle cx="192" cy="118" r="15" fill="url(#pad)"/>
+  <circle cx="192" cy="118" r="6" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,22 @@
+[package]
+name = "flipper-companion-project"
+description = "flip.toml project support compatible with flippy: manifest model, source grammar and fetch-plan generation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+toml = "0.9"
+url.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

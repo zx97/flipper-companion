@@ -1,0 +1,12 @@
+/target
+**/*.rs.bk
+*.pdb
+.DS_Store
+*.dfu
+*.tgz
+/dist
+/stage
+/pkgroot
+
+# Local list of personal markers for the pre-push check
+.personal-markers

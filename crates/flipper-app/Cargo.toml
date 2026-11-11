@@ -1,0 +1,32 @@
+[package]
+name = "flipper-companion-app"
+description = "Application services for flipper-companion: device probing, firmware download and installation, remote storage, backups, and the Flipper application catalog with install, update, uninstall, checksum verification and custom repositories."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+flipper-companion-core.workspace = true
+flipper-companion-dfu.workspace = true
+flipper-companion-protocol.workspace = true
+flipper-companion-update.workspace = true
+flate2.workspace = true
+hex.workspace = true
+md-5.workspace = true
+prost.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tar.workspace = true
+tempfile = "3"
+tokio.workspace = true
+tracing.workspace = true

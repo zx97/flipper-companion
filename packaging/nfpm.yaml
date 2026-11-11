@@ -1,0 +1,82 @@
+# nfpm configuration for the .deb and .rpm packages.
+#
+# Run nfpm from a staging directory ("pkgroot") that contains:
+#   flipper  flipper-companion  LICENSE  README.md  CHANGELOG.md  docs/  udev.rules
+#
+# The CI sets:
+#   PKG_VERSION  package version, without the leading "v" (e.g. 0.8.0)
+#   PKG_ARCH     target package architecture: amd64/arm64 for deb,
+#                x86_64/aarch64 for rpm
+#
+# Usage:
+#   (cd pkgroot && PKG_VERSION=0.8.0 PKG_ARCH=amd64 \
+#      nfpm package -f ../packaging/nfpm.yaml -p deb -t ../dist/)
+name: flipper-companion
+arch: ${PKG_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+release: "1"
+section: utils
+priority: optional
+maintainer: flipper-companion contributors
+vendor: flipper-companion contributors
+homepage: https://github.com/zx97/flipper-companion
+license: AGPL-3.0-or-later
+description: |
+  Desktop and command-line companion for the Flipper Zero.
+
+  Provides device discovery, firmware updates, storage and file management,
+  screen mirroring with a remote keypad, backups, and a catalog for installing
+  and updating Flipper applications.
+
+depends:
+  - libc6
+  - libudev1
+  - libfontconfig1
+  - libfreetype6
+  - libssl3
+  - libglib2.0-0
+  - libharfbuzz0b
+  - libpng16-16
+
+overrides:
+  rpm:
+    depends:
+      - glibc
+      - systemd-libs
+      - fontconfig
+      - freetype
+      - openssl-libs
+      - glib2
+      - harfbuzz
+      - libpng
+
+contents:
+  - src: flipper
+    dst: /usr/bin/flipper
+    file_info:
+      mode: 0755
+  - src: flipper-companion
+    dst: /usr/bin/flipper-companion
+    file_info:
+      mode: 0755
+  - src: flipper-companion.desktop
+    dst: /usr/share/applications/flipper-companion.desktop
+  - src: flipper-companion.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/flipper-companion.svg
+  - src: udev.rules
+    dst: /usr/lib/udev/rules.d/42-flipperzero.rules
+  - src: LICENSE
+    dst: /usr/share/doc/flipper-companion/LICENSE
+  - src: README.md
+    dst: /usr/share/doc/flipper-companion/README.md
+  - src: CHANGELOG.md
+    dst: /usr/share/doc/flipper-companion/CHANGELOG.md
+  - src: docs
+    dst: /usr/share/doc/flipper-companion/docs
+    type: tree
+scripts:
+  postinstall: postinstall.sh
+rpm:
+  group: Applications/System
+  summary: Desktop and command-line companion for the Flipper Zero

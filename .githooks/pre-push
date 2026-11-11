@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Refuse to push personal or environment-specific data.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if ! python3 tools/check_anonymity.py; then
+    echo "" >&2
+    echo "Push blocked by the personal data check (tools/check_anonymity.py)." >&2
+    echo "Fix the findings above, or run the check manually to review them." >&2
+    exit 1
+fi

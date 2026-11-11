@@ -1,0 +1,212 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, without the leading v (default: Cargo.toml)"
+        required: false
+        type: string
+      publish:
+        description: "Create/update the GitHub release and publish to crates.io"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Run cargo publish --dry-run instead of publishing"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  NFPM_VERSION: "2.48.0"
+  APT_DEPS: >-
+    pkg-config libssl-dev libudev-dev libfontconfig1-dev libfreetype6-dev
+    libxkbcommon-dev libwayland-dev libgl1-mesa-dev
+
+jobs:
+  # Resolve the version once and verify it matches Cargo.toml.
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          set -euo pipefail
+          CARGO_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ inputs.version }}"
+            [ -n "$V" ] || V="$CARGO_VERSION"
+            echo "publish=${{ inputs.publish }}" >> "$GITHUB_OUTPUT"
+          else
+            V="${GITHUB_REF_NAME#v}"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$V" != "$CARGO_VERSION" ]; then
+            echo "::error::tag/input version $V does not match Cargo.toml $CARGO_VERSION" >&2
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.arch }}
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $APT_DEPS
+      - name: Personal data check
+        run: python3 tools/check_anonymity.py
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Build
+        run: cargo build --release --locked --workspace
+      - name: Stage the tarball
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          NAME="flipper-companion-$VERSION-linux-${{ matrix.arch }}"
+          mkdir -p dist "$NAME"
+          cp target/release/flipper target/release/flipper-companion "$NAME/"
+          cp LICENSE README.md CHANGELOG.md NOTICE.md "$NAME/"
+          cp -r docs "$NAME/docs"
+          cp udev/42-flipperzero.rules "$NAME/udev.rules"
+          tar -czf "dist/$NAME.tar.gz" "$NAME"
+          cp target/release/flipper target/release/flipper-companion dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flipper-companion-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  package:
+    needs: [version, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Install nfpm
+        run: |
+          curl -sSL -o nfpm.tgz \
+            "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf nfpm.tgz nfpm
+          sudo install -m 0755 nfpm /usr/local/bin/nfpm
+      - name: Build .deb and .rpm
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          for a in amd64 arm64; do
+            case "$a" in
+              amd64) D=amd64; R=x86_64 ;;
+              arm64) D=arm64; R=aarch64 ;;
+            esac
+            rm -rf pkgroot
+            mkdir -p pkgroot
+            cp "dist/flipper" "dist/flipper-companion" pkgroot/
+            cp packaging/flipper-companion.desktop packaging/postinstall.sh pkgroot/
+            cp crates/flipper-gui/ui/icon.svg pkgroot/flipper-companion.svg
+            cp udev/42-flipperzero.rules pkgroot/udev.rules
+            cp LICENSE README.md CHANGELOG.md pkgroot/
+            cp -r docs pkgroot/docs
+            (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH="$D" \
+              nfpm package -f "$GITHUB_WORKSPACE/packaging/nfpm.yaml" -p deb -t "$GITHUB_WORKSPACE/dist/")
+            (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH="$R" \
+              nfpm package -f "$GITHUB_WORKSPACE/packaging/nfpm.yaml" -p rpm -t "$GITHUB_WORKSPACE/dist/")
+          done
+          # The binaries in dist/ are only needed for packaging.
+          rm -f dist/flipper dist/flipper-companion
+          (cd dist && sha256sum ./*.tar.gz ./*.deb ./*.rpm > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    needs: [version, package]
+    if: ${{ needs.version.outputs.publish == 'true' && !inputs.dry_run }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: dist
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.version.outputs.version }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            python3 packaging/changelog-section.py \
+              "${{ needs.version.outputs.version }}" > /tmp/notes.md
+            gh release create "$TAG" \
+              --title "flipper-companion ${{ needs.version.outputs.version }}" \
+              --notes-file /tmp/notes.md
+          fi
+          gh release upload "$TAG" dist/* --clobber
+
+  crates:
+    needs: [version, build]
+    if: ${{ needs.version.outputs.publish == 'true' || inputs.dry_run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    concurrency:
+      group: crates-io
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $APT_DEPS
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.version.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ] && [ "${DRY_RUN}" != "true" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is not set. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [ "${DRY_RUN}" = "true" ]; then
+            packaging/publish-crates.sh --dry-run
+          else
+            packaging/publish-crates.sh
+          fi

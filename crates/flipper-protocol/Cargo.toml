@@ -1,0 +1,28 @@
+[package]
+name = "flipper-companion-protocol"
+description = "Serial framing, protobuf RPC session and screen conversion for the Flipper Zero."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+bytes.workspace = true
+flipper-companion-core.workspace = true
+futures.workspace = true
+prost.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-serial.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
+prost-build = "0.14"
+protox.workspace = true

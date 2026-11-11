@@ -1,0 +1,1830 @@
+// Desktop UI for flipper-companion.
+//
+// Keep this file declarative: no I/O, no business logic.  The Rust worker
+// publishes immutable snapshots and the UI only renders them.
+
+import {
+    Button,
+    CheckBox,
+    ComboBox,
+    LineEdit,
+    ListView,
+    Palette,
+    ProgressIndicator,
+    ScrollView,
+    TabWidget,
+    TextEdit,
+} from "std-widgets.slint";
+
+// Flipper Zero style controls: a round orange directional pad with moulded
+// arrows around a raised OK button, plus the separate round Back button.
+component FlipperPad inherits Rectangle {
+    /// Sends the same key codes as the device: 0 up, 1 down, 2 right,
+    /// 3 left, 4 ok, 5 back.
+    callback send(int);
+
+    width: 260px;
+    height: 190px;
+
+    // soft drop shadow so the pad sits on the panel
+    Rectangle {
+        x: 2px;
+        y: 11px;
+        width: 176px;
+        height: 176px;
+        border-radius: 88px;
+        background: #00000066;
+    }
+
+    pad := Rectangle {
+        x: 0;
+        y: 5px;
+        width: 176px;
+        height: 176px;
+        border-radius: 88px;
+        background: @linear-gradient(150deg, #f5a05c 0%, #e37b2c 42%, #c35c19 100%);
+        border-width: 1px;
+        border-color: #a94f11;
+
+        // up
+        Rectangle {
+            x: 60px;
+            y: 2px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: up-area.has-hover ? #7c3a0c22 : transparent;
+
+            Image {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 24px;
+                height: 24px;
+                source: @image-url("icons/up.svg");
+                colorize: #7c3a0c;
+            }
+
+            up-area := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.send(0); }
+            }
+        }
+
+        // down
+        Rectangle {
+            x: 60px;
+            y: 118px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: down-area.has-hover ? #7c3a0c22 : transparent;
+
+            Image {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 24px;
+                height: 24px;
+                source: @image-url("icons/down.svg");
+                colorize: #7c3a0c;
+            }
+
+            down-area := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.send(1); }
+            }
+        }
+
+        // right
+        Rectangle {
+            x: 118px;
+            y: 60px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: right-area.has-hover ? #7c3a0c22 : transparent;
+
+            Image {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 24px;
+                height: 24px;
+                source: @image-url("icons/right.svg");
+                colorize: #7c3a0c;
+            }
+
+            right-area := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.send(2); }
+            }
+        }
+
+        // left
+        Rectangle {
+            x: 2px;
+            y: 60px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: left-area.has-hover ? #7c3a0c22 : transparent;
+
+            Image {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 24px;
+                height: 24px;
+                source: @image-url("icons/left.svg");
+                colorize: #7c3a0c;
+            }
+
+            left-area := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.send(3); }
+            }
+        }
+
+        // raised centre button
+        Rectangle {
+            x: 57px;
+            y: 57px;
+            width: 62px;
+            height: 62px;
+            border-radius: 31px;
+            background: centre-area.pressed
+                ? @linear-gradient(150deg, #d9701f 0%, #c25a16 100%)
+                : @linear-gradient(150deg, #f7a862 0%, #e9853a 45%, #cf6620 100%);
+            border-width: 2px;
+            border-color: #f8b77c;
+
+            centre-area := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.send(4); }
+            }
+        }
+    }
+
+    back := Rectangle {
+        x: 200px;
+        y: 66px;
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background: back-area.pressed
+            ? @linear-gradient(150deg, #d9701f 0%, #c25a16 100%)
+            : @linear-gradient(150deg, #f5a05c 0%, #e37b2c 45%, #c35c19 100%);
+        border-width: 1px;
+        border-color: #a94f11;
+
+        Image {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: 24px;
+            height: 24px;
+            source: @image-url("icons/back.svg");
+            colorize: #7c3a0c;
+        }
+
+        back-area := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.send(5); }
+        }
+    }
+}
+
+// Entry of the application context menu.
+component ContextMenuItem inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    height: 32px;
+    border-radius: 5px;
+    background: menu-area.has-hover && root.enabled ? #2a2a31 : transparent;
+
+    Text {
+        x: 12px;
+        text: root.label;
+        color: root.enabled ? #ececf0 : #5c5c66;
+        vertical-alignment: center;
+    }
+
+    menu-area := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Tab bar entry: a classic icon plus a label.
+component TabButton inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked;
+
+    height: 38px;
+    horizontal-stretch: 0;
+    border-radius: 8px;
+    background: root.selected ? #2a2119 : (hover.has-hover ? #1c1c20 : transparent);
+
+    hover := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 8px;
+
+        Image {
+            source: root.icon;
+            width: 20px;
+            height: 20px;
+            colorize: root.selected ? #ff9d3c : #9a9aa4;
+        }
+
+        Text {
+            text: root.label;
+            color: root.selected ? #ffb066 : #b9b9c2;
+            font-size: 14px;
+            font-weight: root.selected ? 600 : 400;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export struct DeviceRow {
+    title: string,
+    subtitle: string,
+    detail: string,
+}
+
+export struct AppRow {
+    checked: bool,
+    name: string,
+    version: string,
+    size: string,
+    repository: string,
+    update: string,
+    description: string,
+    /// 0 = not installed, 1 = installed, 2 = update available, 3 = up to date.
+    status: int,
+}
+
+// Sortable column header of the application table.
+component HeaderCell inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    in property <bool> ascending;
+    callback clicked;
+
+    height: 28px;
+    background: area.has-hover ? #1c1c20 : transparent;
+
+    HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        spacing: 4px;
+
+        Text {
+            text: root.label;
+            color: root.active ? #ff9d3c : #8a8a93;
+            font-size: 11px;
+            font-weight: 600;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        if root.active : Image {
+            width: 10px;
+            height: 10px;
+            source: root.ascending ? @image-url("icons/up.svg") : @image-url("icons/down.svg");
+            colorize: #ff9d3c;
+        }
+    }
+
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export struct FileRow {
+    name: string,
+    kind: string,
+    size: string,
+}
+
+export component AppWindow inherits Window {
+    title: "flipper companion";
+    icon: @image-url("icon.svg");
+    preferred-width: 1240px;
+    preferred-height: 860px;
+    min-width: 1000px;
+    min-height: 620px;
+    background: #101012;
+    default-font-size: 13px;
+    default-font-family: "DejaVu Sans";
+
+    init => {
+        Palette.color-scheme = ColorScheme.dark;
+    }
+
+    in property <[DeviceRow]> devices;
+    in property <[FileRow]> files;
+    in property <[AppRow]> apps;
+    in property <[string]> log-lines;
+    in property <[string]> app-source-labels;
+    in-out property <int> app-source-index: 0;
+    in property <image> screen-image;
+    in property <bool> streaming: false;
+    in property <bool> busy: false;
+    in property <float> progress: 0.0;
+
+    in-out property <int> current-tab: 0;
+    in-out property <int> selected-index: 0;
+    in-out property <int> selected-file: -1;
+    in-out property <int> selected-app: -1;
+    in-out property <int> app-filter: 0;
+    in-out property <string> app-search: "";
+    in-out property <int> update-count: 0;
+    in-out property <int> menu-entry: -1;
+    in-out property <int> sort-column: 0;
+    in-out property <int> selected-count: 0;
+    in-out property <bool> all-selected: false;
+    in-out property <bool> sort-ascending: true;
+    in-out property <length> menu-x: 0px;
+    in-out property <length> menu-y: 0px;
+    in-out property <bool> repos-open: false;
+    in-out property <string> app-source: "";
+    in-out property <int> channel-index: 0;
+    in-out property <string> dfu-path: "";
+    in-out property <string> status: "Starting…";
+    in-out property <string> progress-text: "";
+    in-out property <string> current-task: "";
+    in-out property <string> latest-firmware: "";
+
+    in-out property <int> log-level: 1;
+    in-out property <string> log-file: "";
+    in-out property <string> remote-path: "/ext";
+    in-out property <string> local-path: "";
+    in-out property <string> new-name: "";
+    in-out property <string> prop-path: "";
+    in-out property <string> prop-kind: "";
+    in-out property <string> prop-size: "";
+    in-out property <string> prop-modified: "";
+    in-out property <string> prop-extra: "";
+    in-out property <string> prop-md5: "";
+    in-out property <string> prop-error: "";
+    in-out property <bool> delete-armed: false;
+    in-out property <int> files-action: 0;
+    in-out property <string> backup-path: "";
+    in-out property <string> restore-path: "";
+    in-out property <bool> restore-armed: false;
+    in-out property <bool> reset-armed: false;
+
+    callback refresh();
+    callback flash(string);
+    callback check-updates(int);
+    callback channel-changed(int);
+    callback install-update(int);
+    callback start-stream();
+    callback stop-stream();
+    callback send-key(int);
+    callback list-files(string);
+    callback go-up();
+    callback open-entry(int);
+    callback download-entry(int, string);
+    callback upload-file(string, string);
+    callback delete-entry(int);
+    callback make-directory(string, string);
+    callback rename-entry(int, string);
+    callback inspect-entry(int);
+    callback prepare-download(int);
+    callback md5-entry(int);
+    callback refresh-apps();
+    callback install-entry(int);
+    callback update-entry(int);
+    callback reinstall-entry(int);
+    callback apps-opened();
+    callback sort-apps(int);
+    callback toggle-app(int);
+    callback toggle-select-all();
+    callback update-selected();
+    callback verify-entry(int);
+    callback uninstall-entry(int);
+    callback filter-apps(int);
+    callback search-apps(string);
+    callback check-app-updates();
+    callback add-app-source(string);
+    callback app-source-changed(string);
+    callback remove-app-source();
+    callback clear-log();
+    callback set-log-level(int);
+    callback backup(string);
+    callback restore(string);
+    callback factory-reset();
+    callback play-alert();
+
+    changed channel-index => { root.channel-changed(self.channel-index); }
+
+    changed menu-entry => {
+        if (root.menu-entry >= 0) {
+            app-menu.show();
+        }
+    }
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // ------------------------------------------------------------------
+        // Header
+        // ------------------------------------------------------------------
+        Rectangle {
+            height: 64px;
+            background: #17171a;
+
+            HorizontalLayout {
+                padding-left: 22px;
+                padding-right: 22px;
+                spacing: 10px;
+
+                Text {
+                    text: "flipper";
+                    color: #ff8200;
+                    font-size: 22px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: "companion";
+                    color: #ececf0;
+                    font-size: 22px;
+                    font-weight: 300;
+                    vertical-alignment: center;
+                }
+
+                Rectangle { horizontal-stretch: 1; }
+
+                HorizontalLayout {
+                    spacing: 6px;
+
+                    if root.devices.length == 0 : Text {
+                        text: "No Flipper";
+                        color: #6f6f78;
+                        vertical-alignment: center;
+                    }
+
+                    for device[index] in root.devices : Rectangle {
+                        height: 40px;
+                        width: 175px;
+                        border-radius: 8px;
+                        background: index == root.selected-index ? #26262b : #1c1c20;
+
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.selected-index = index; }
+
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+
+                                Text {
+                                    text: device.title;
+                                    color: #ececf0;
+                                    font-weight: 600;
+                                    overflow: elide;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { horizontal-stretch: 1; }
+
+                Button {
+                    text: "Refresh";
+                                        icon: @image-url("icons/refresh.svg");
+                                        icon-size: 18px;
+                                        colorize-icon: true;
+                    enabled: !root.busy;
+                    clicked => { root.refresh(); }
+                }
+            }
+        }
+
+            // --------------------------------------------------------------
+            // Main panel
+            // --------------------------------------------------------------
+            Rectangle {
+                vertical-stretch: 1;
+                background: #101012;
+
+                VerticalLayout {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 18px;
+                    padding-bottom: 50px;
+                    spacing: 12px;
+
+                    VerticalLayout {
+                        spacing: 8px;
+
+                        HorizontalLayout {
+                            spacing: 4px;
+
+                            TabButton {
+                                icon: @image-url("icons/device.svg");
+                                label: "Device";
+                                selected: root.current-tab == 0;
+                                clicked => { root.current-tab = 0; }
+                            }
+                            TabButton {
+                                icon: @image-url("icons/screen.svg");
+                                label: "Screen";
+                                selected: root.current-tab == 1;
+                                clicked => { root.current-tab = 1; }
+                            }
+                            TabButton {
+                                icon: @image-url("icons/files.svg");
+                                label: "Files";
+                                selected: root.current-tab == 2;
+                                clicked => { root.current-tab = 2; }
+                            }
+                            TabButton {
+                                icon: @image-url("icons/firmware.svg");
+                                label: "Firmware";
+                                selected: root.current-tab == 3;
+                                clicked => { root.current-tab = 3; }
+                            }
+                            TabButton {
+                                icon: @image-url("icons/apps.svg");
+                                label: "Apps";
+                                selected: root.current-tab == 4;
+                                clicked => {
+                                    root.current-tab = 4;
+                                    root.apps-opened();
+                                }
+                            }
+                            TabButton {
+                                icon: @image-url("icons/log.svg");
+                                label: "Log";
+                                selected: root.current-tab == 5;
+                                clicked => { root.current-tab = 5; }
+                            }
+                        }
+
+                        VerticalLayout {
+                            vertical-stretch: 1;
+                            // Keep the window from resizing when switching tabs:
+                            // every page is at least as wide as the default window.
+                            min-width: 1204px;
+
+                                if root.current-tab == 0 : VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 10px;
+
+                                    if root.devices.length > 0 : Rectangle {
+                                        border-radius: 10px;
+                                        background: #17171a;
+
+                                        VerticalLayout {
+                                            padding: 18px;
+                                            spacing: 10px;
+
+                                            Text {
+                                                text: root.devices[root.selected-index].title;
+                                                color: #ffffff;
+                                                font-size: 18px;
+                                                font-weight: 600;
+                                            }
+
+                                            Text {
+                                                text: root.devices[root.selected-index].detail;
+                                                color: #b9b9c2;
+                                                wrap: word-wrap;
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        border-radius: 10px;
+                                        background: #17171a;
+
+                                        VerticalLayout {
+                                            padding: 16px;
+                                            spacing: 10px;
+
+                                            Text {
+                                                text: "MAINTENANCE";
+                                                color: #ff9d3c;
+                                                font-size: 11px;
+                                                font-weight: 700;
+                                            }
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+
+                                                LineEdit {
+                                                    horizontal-stretch: 1;
+                                                    text: root.backup-path;
+                                                    placeholder-text: "Backup archive (.tgz)";
+                                                    edited(text) => { root.backup-path = text; }
+                                                }
+
+                                                Button {
+                                                    text: "Backup";
+                                            icon: @image-url("icons/save.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                                    enabled: !root.busy && root.backup-path != "" && root.devices.length > 0;
+                                                    clicked => { root.backup(root.backup-path); }
+                                                }
+                                            }
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+
+                                                LineEdit {
+                                                    horizontal-stretch: 1;
+                                                    text: root.restore-path;
+                                                    placeholder-text: "⇧ Restore archive (.tgz)";
+                                                    edited(text) => { root.restore-path = text; }
+                                                }
+
+                                                Button {
+                                                    text: root.restore-armed ? "Confirm restore" : "Restore";
+                                            icon: @image-url("icons/restore.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                                    enabled: !root.busy && root.restore-path != "" && root.devices.length > 0;
+                                                    clicked => {
+                                                        if root.restore-armed {
+                                                            root.restore(root.restore-path);
+                                                            root.restore-armed = false;
+                                                        } else {
+                                                            root.restore-armed = true;
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+
+                                                Button {
+                                                    text: "Play alert";
+                                            icon: @image-url("icons/alert.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                                    enabled: !root.busy && root.devices.length > 0;
+                                                    clicked => { root.play-alert(); }
+                                                }
+
+                                                Button {
+                                                    text: root.reset-armed ? "Confirm factory reset" : "Factory reset";
+                                            icon: @image-url("icons/reset.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                                    enabled: !root.busy && root.devices.length > 0;
+                                                    clicked => {
+                                                        if root.reset-armed {
+                                                            root.factory-reset();
+                                                            root.reset-armed = false;
+                                                        } else {
+                                                            root.reset-armed = true;
+                                                        }
+                                                    }
+                                                }
+
+                                                Rectangle { horizontal-stretch: 1; }
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle { vertical-stretch: 1; }
+                                }
+                        
+
+                                if root.current-tab == 1 : VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 12px;
+
+                                    HorizontalLayout {
+                                        spacing: 10px;
+
+                                        Text {
+                                            text: "FLIPPER SCREEN";
+                                            color: #ff9d3c;
+                                            font-size: 11px;
+                                            font-weight: 700;
+                                            vertical-alignment: center;
+                                        }
+
+                                        Rectangle { horizontal-stretch: 1; }
+
+                                        Button {
+                                            text: "Start stream";
+                                            icon: @image-url("icons/play.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.streaming && !root.busy;
+                                            clicked => { root.start-stream(); }
+                                        }
+
+                                        Button {
+                                            text: "Stop";
+                                            icon: @image-url("icons/stop.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: root.streaming;
+                                            clicked => { root.stop-stream(); }
+                                        }
+                                    }
+
+                                    // Fill the free space and keep the screen and pad centred.
+                                    Rectangle {
+                                        vertical-stretch: 1;
+
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 16px;
+
+                                            HorizontalLayout {
+                                                spacing: 48px;
+
+                                                Rectangle { horizontal-stretch: 1; }
+
+                                                Rectangle {
+                                                    width: 384px;
+                                                    height: 192px;
+                                                    background: #000000;
+                                                    border-radius: 8px;
+                                                    clip: true;
+
+                                                    Image {
+                                                        source: root.screen-image;
+                                                        width: 100%;
+                                                        height: 100%;
+                                                        image-fit: contain;
+                                                    }
+                                                }
+
+                                                FlipperPad {
+                                                    send(key) => { root.send-key(key); }
+                                                }
+
+                                                Rectangle { horizontal-stretch: 1; }
+                                            }
+
+                                            Text {
+                                                text: root.streaming ? "Streaming live from the device." : "Start the stream to mirror the screen and send key presses.";
+                                                color: #8a8a93;
+                                                wrap: word-wrap;
+                                                horizontal-alignment: center;
+                                            }
+                                        }
+                                    }
+                                }
+                        
+
+                                if root.current-tab == 2 : VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 10px;
+
+                                    Text {
+                                        text: "REMOTE FILES";
+                                        color: #ff9d3c;
+                                        font-size: 11px;
+                                        font-weight: 700;
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.remote-path;
+                                            placeholder-text: "Remote path (/ext) — Enter to open";
+                                            edited(text) => { root.remote-path = text; }
+                                            accepted(text) => {
+                                                root.remote-path = text;
+                                                root.list-files(text);
+                                            }
+                                        }
+
+                                    }
+
+                                    Text {
+                                        text: "Single click selects · double-click opens a folder or `..` · Properties shows the details.";
+                                        color: #6f6f78;
+                                        font-size: 11px;
+                                        wrap: word-wrap;
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+
+                                        Button {
+                                            text: "Open";
+                                            icon: @image-url("icons/open.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0;
+                                            clicked => { root.open-entry(root.selected-file); }
+                                        }
+
+                                        Button {
+                                            text: "Properties";
+                                            icon: @image-url("icons/properties.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0;
+                                            clicked => { root.inspect-entry(root.selected-file); }
+                                        }
+
+                                        Button {
+                                            text: "New folder";
+                                            icon: @image-url("icons/mkdir.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.remote-path != "";
+                                            clicked => {
+                                                root.files-action = root.files-action == 1 ? 0 : 1;
+                                                root.new-name = "";
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Rename";
+                                            icon: @image-url("icons/rename.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0;
+                                            clicked => {
+                                                root.files-action = root.files-action == 2 ? 0 : 2;
+                                                root.new-name = "";
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Download";
+                                            icon: @image-url("icons/download.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0;
+                                            clicked => {
+                                                root.files-action = root.files-action == 3 ? 0 : 3;
+                                                root.prepare-download(root.selected-file);
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Upload";
+                                            icon: @image-url("icons/upload.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.remote-path != "";
+                                            clicked => {
+                                                root.files-action = root.files-action == 4 ? 0 : 4;
+                                            }
+                                        }
+
+                                        Rectangle { horizontal-stretch: 1; }
+
+                                        Button {
+                                            text: root.delete-armed ? "Confirm delete" : "Delete";
+                                            icon: @image-url("icons/delete.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0;
+                                            clicked => {
+                                                if root.delete-armed {
+                                                    root.delete-entry(root.selected-file);
+                                                    root.delete-armed = false;
+                                                } else {
+                                                    root.delete-armed = true;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if root.files-action == 1 : HorizontalLayout {
+                                        spacing: 8px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.new-name;
+                                            placeholder-text: "New directory name";
+                                            edited(text) => { root.new-name = text; }
+                                            accepted(text) => {
+                                                if text != "" {
+                                                    root.make-directory(root.remote-path, text);
+                                                    root.files-action = 0;
+                                                }
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Create";
+                                            icon: @image-url("icons/mkdir.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.new-name != "";
+                                            clicked => {
+                                                root.make-directory(root.remote-path, root.new-name);
+                                                root.files-action = 0;
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Cancel";
+                                            clicked => { root.files-action = 0; }
+                                        }
+                                    }
+
+                                    if root.files-action == 2 : HorizontalLayout {
+                                        spacing: 8px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.new-name;
+                                            placeholder-text: "New name";
+                                            edited(text) => { root.new-name = text; }
+                                            accepted(text) => {
+                                                if text != "" {
+                                                    root.rename-entry(root.selected-file, text);
+                                                    root.files-action = 0;
+                                                }
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Rename";
+                                            icon: @image-url("icons/rename.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0 && root.new-name != "";
+                                            clicked => {
+                                                root.rename-entry(root.selected-file, root.new-name);
+                                                root.files-action = 0;
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Cancel";
+                                            clicked => { root.files-action = 0; }
+                                        }
+                                    }
+
+                                    if root.files-action == 3 : HorizontalLayout {
+                                        spacing: 8px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.local-path;
+                                            placeholder-text: "Download path";
+                                            edited(text) => { root.local-path = text; }
+                                            accepted(text) => {
+                                                root.local-path = text;
+                                                root.download-entry(root.selected-file, text);
+                                                root.files-action = 0;
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Download";
+                                            icon: @image-url("icons/download.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.selected-file >= 0 && root.local-path != "";
+                                            clicked => {
+                                                root.download-entry(root.selected-file, root.local-path);
+                                                root.files-action = 0;
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Cancel";
+                                            clicked => { root.files-action = 0; }
+                                        }
+                                    }
+
+                                    if root.files-action == 4 : HorizontalLayout {
+                                        spacing: 8px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.local-path;
+                                            placeholder-text: "Local file to upload";
+                                            edited(text) => { root.local-path = text; }
+                                            accepted(text) => {
+                                                root.local-path = text;
+                                                root.upload-file(text, root.remote-path);
+                                                root.files-action = 0;
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Upload";
+                                            icon: @image-url("icons/upload.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy && root.local-path != "" && root.remote-path != "";
+                                            clicked => {
+                                                root.upload-file(root.local-path, root.remote-path);
+                                                root.files-action = 0;
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Cancel";
+                                            clicked => { root.files-action = 0; }
+                                        }
+                                    }
+
+                                    if root.remote-path != "/" && root.remote-path != "" : Rectangle {
+                                        height: 34px;
+                                        border-radius: 6px;
+                                        background: #1c1c20;
+
+                                        TouchArea {
+                                            double-clicked => { root.go-up(); }
+
+                                            HorizontalLayout {
+                                                padding-left: 10px;
+                                                padding-right: 10px;
+                                                spacing: 10px;
+
+                                                Text {
+                                                    text: "..";
+                                                    color: #ff9d3c;
+                                                    horizontal-stretch: 1;
+                                                    vertical-alignment: center;
+                                                }
+
+                                                Text {
+                                                    text: "parent";
+                                                    color: #8a8a93;
+                                                    width: 90px;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    ListView {
+                                        vertical-stretch: 1;
+                                        min-height: 220px;
+
+                                        for file[index] in root.files : Rectangle {
+                                            height: 34px;
+                                            border-radius: 6px;
+                                            background: index == root.selected-file ? #26262b : transparent;
+
+                                            TouchArea {
+                                                mouse-cursor: pointer;
+
+                                                clicked => {
+                                                    root.selected-file = index;
+                                                    root.delete-armed = false;
+                                                    root.prop-path = "";
+                                                    root.prop-kind = "";
+                                                    root.prop-size = "";
+                                                    root.prop-modified = "";
+                                                    root.prop-extra = "";
+                                                    root.prop-md5 = "";
+                                                    root.prop-error = "";
+                                                }
+
+                                                double-clicked => {
+                                                    if file.kind == "dir" {
+                                                        root.open-entry(index);
+                                                    }
+                                                }
+
+                                                HorizontalLayout {
+                                                    padding-left: 10px;
+                                                    padding-right: 10px;
+                                                    spacing: 10px;
+
+                                                    Text {
+                                                        text: file.name;
+                                                        color: #ececf0;
+                                                        horizontal-stretch: 1;
+                                                        vertical-alignment: center;
+                                                    }
+
+                                                    Text {
+                                                        text: file.kind;
+                                                        color: #8a8a93;
+                                                        width: 50px;
+                                                        vertical-alignment: center;
+                                                    }
+
+                                                    Text {
+                                                        text: file.size;
+                                                        color: #8a8a93;
+                                                        width: 90px;
+                                                        horizontal-alignment: right;
+                                                        vertical-alignment: center;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        border-radius: 8px;
+                                        background: #17171a;
+
+                                        VerticalLayout {
+                                            padding: 10px;
+                                            spacing: 4px;
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+
+                                                Text {
+                                                    text: "PROPERTIES";
+                                                    color: #ff9d3c;
+                                                    font-size: 11px;
+                                                    font-weight: 700;
+                                                    vertical-alignment: center;
+                                                }
+
+                                                Rectangle { horizontal-stretch: 1; }
+
+                                                Button {
+                                                    text: "MD5";
+                                            icon: @image-url("icons/verify.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                                    enabled: !root.busy && root.prop-kind == "file";
+                                                    clicked => { root.md5-entry(root.selected-file); }
+                                                }
+                                            }
+
+                                            Text {
+                                                text: root.prop-path != "" ? root.prop-path : "Select an entry, then press Properties";
+                                                color: #ececf0;
+                                                wrap: word-wrap;
+                                            }
+
+                                            HorizontalLayout {
+                                                spacing: 18px;
+
+                                                Text {
+                                                    text: "Kind: " + (root.prop-kind != "" ? root.prop-kind : "-");
+                                                    color: #b9b9c2;
+                                                }
+
+                                                Text {
+                                                    text: "Size: " + (root.prop-size != "" ? root.prop-size : "-");
+                                                    color: #b9b9c2;
+                                                }
+                                            }
+
+                                            Text {
+                                                text: "Modified: " + root.prop-modified;
+                                                color: #8a8a93;
+                                                visible: root.prop-modified != "";
+                                            }
+
+                                            Text {
+                                                text: "Entries: " + root.prop-extra;
+                                                color: #8a8a93;
+                                                visible: root.prop-extra != "";
+                                            }
+
+                                            Text {
+                                                text: root.prop-md5;
+                                                color: #ff9d3c;
+                                                wrap: word-wrap;
+                                                visible: root.prop-md5 != "";
+                                            }
+
+                                            Text {
+                                                text: root.prop-error;
+                                                color: #ff6b6b;
+                                                wrap: word-wrap;
+                                                visible: root.prop-error != "";
+                                            }
+                                        }
+                                    }
+
+                                }
+
+                                if root.current-tab == 3 : VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 12px;
+
+                                    HorizontalLayout {
+                                        spacing: 10px;
+
+                                        Text {
+                                            text: "CHANNEL";
+                                            color: #ff9d3c;
+                                            font-size: 11px;
+                                            font-weight: 700;
+                                            vertical-alignment: center;
+                                        }
+
+                                        ComboBox {
+                                            width: 200px;
+                                            model: ["release", "release-candidate", "development"];
+                                            current-index: root.channel-index;
+                                            selected(value) => { root.channel-index = value == "release" ? 0 : (value == "release-candidate" ? 1 : 2); }
+                                        }
+
+                                        Rectangle { horizontal-stretch: 1; }
+
+                                        Button {
+                                            text: "Check updates";
+                                            icon: @image-url("icons/refresh.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy;
+                                            clicked => { root.check-updates(root.channel-index); }
+                                        }
+
+                                        Button {
+                                            text: "Install update";
+                                            icon: @image-url("icons/download.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            primary: true;
+                                            enabled: !root.busy && root.devices.length > 0;
+                                            clicked => { root.install-update(root.channel-index); }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: root.latest-firmware;
+                                        color: #ff9d3c;
+                                        visible: root.latest-firmware != "";
+                                        wrap: word-wrap;
+                                    }
+
+                                    Rectangle { height: 1px; background: #26262b; }
+
+                                    Text {
+                                        text: "LOCAL DFU IMAGE";
+                                        color: #ff9d3c;
+                                        font-size: 11px;
+                                        font-weight: 700;
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 10px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.dfu-path;
+                                            placeholder-text: "Path to a .dfu image";
+                                            edited(text) => { root.dfu-path = text; }
+                                        }
+
+                                        Button {
+                                            text: "Flash .dfu";
+                                            icon: @image-url("icons/flash.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            primary: true;
+                                            enabled: !root.busy && root.dfu-path != "";
+                                            clicked => { root.flash(root.dfu-path); }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: "Flashing a .dfu requires the device to be in DFU mode. The SD-card update (Install update) works with a running device.";
+                                        color: #8a8a93;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if root.busy && root.current-task == "firmware" : ProgressIndicator {
+                                        height: 6px;
+                                        progress: root.progress;
+                                        indeterminate: root.progress <= 0.001;
+                                    }
+
+                                    Rectangle { vertical-stretch: 1; }
+                                }
+                        
+
+                                if root.current-tab == 4 : VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 10px;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+
+                                        LineEdit {
+                                            horizontal-stretch: 1;
+                                            text: root.app-search;
+                                            placeholder-text: "Search apps";
+                                            edited(text) => {
+                                                root.app-search = text;
+                                                root.search-apps(text);
+                                            }
+                                        }
+
+                                        ComboBox {
+                                            width: 150px;
+                                            model: ["All apps", "Installed", "Updates"];
+                                            current-index: root.app-filter;
+                                            selected(value) => {
+                                                root.filter-apps(value == "All apps" ? 0 : (value == "Installed" ? 1 : 2));
+                                            }
+                                        }
+
+                                        Button {
+                                            text: root.selected-count > 0
+                                                ? "Update selected (" + root.selected-count + ")"
+                                                : "Update selected";
+                                            icon: @image-url("icons/download.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            primary: root.selected-count > 0;
+                                            enabled: !root.busy && root.selected-count > 0;
+                                            clicked => { root.update-selected(); }
+                                        }
+
+                                        Button {
+                                            text: "Refresh";
+                                            icon: @image-url("icons/refresh.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy;
+                                            clicked => { root.refresh-apps(); }
+                                        }
+
+                                        Button {
+                                            text: "Check updates";
+                                            icon: @image-url("icons/verify.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            enabled: !root.busy;
+                                            clicked => { root.check-app-updates(); }
+                                        }
+
+                                        Button {
+                                            text: "Repositories";
+                                            icon: @image-url("icons/files.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            clicked => { root.repos-open = !root.repos-open; }
+                                        }
+                                    }
+
+                                    // Repository management is rare: hidden until asked for.
+                                    if root.repos-open : Rectangle {
+                                        border-radius: 8px;
+                                        background: #17171a;
+
+                                        VerticalLayout {
+                                            padding: 12px;
+                                            spacing: 8px;
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+
+                                                Text {
+                                                    text: "Repository";
+                                                    color: #ff9d3c;
+                                                    vertical-alignment: center;
+                                                }
+
+                                                ComboBox {
+                                                    width: 300px;
+                                                    model: root.app-source-labels;
+                                                    current-index: root.app-source-index;
+                                                    selected(value) => { root.app-source-changed(value); }
+                                                }
+
+                                                Button {
+                                                    text: "Remove";
+                                                    icon: @image-url("icons/remove.svg");
+                                                    icon-size: 16px;
+                                                    colorize-icon: true;
+                                                    enabled: root.app-source-index > 1;
+                                                    clicked => { root.remove-app-source(); }
+                                                }
+
+                                                Rectangle { horizontal-stretch: 1; }
+                                            }
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+
+                                                LineEdit {
+                                                    horizontal-stretch: 1;
+                                                    text: root.app-source;
+                                                    placeholder-text: "Add a JSON repository URL (https://...)";
+                                                    edited(text) => { root.app-source = text; }
+                                                    accepted(text) => {
+                                                        root.app-source = text;
+                                                        root.add-app-source(text);
+                                                    }
+                                                }
+
+                                                Button {
+                                                    text: "Add";
+                                                    icon: @image-url("icons/add.svg");
+                                                    icon-size: 16px;
+                                                    colorize-icon: true;
+                                                    enabled: root.app-source != "";
+                                                    clicked => { root.add-app-source(root.app-source); }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 0px;
+
+                                        CheckBox {
+                                            width: 34px;
+                                            checked <=> root.all-selected;
+                                            toggled => { root.toggle-select-all(); }
+                                        }
+
+                                        HeaderCell {
+                                            horizontal-stretch: 1;
+                                            label: "Application";
+                                            active: root.sort-column == 0;
+                                            ascending: root.sort-ascending;
+                                            clicked => { root.sort-apps(0); }
+                                        }
+
+                                        HeaderCell {
+                                            width: 90px;
+                                            label: "Version";
+                                            active: root.sort-column == 1;
+                                            ascending: root.sort-ascending;
+                                            clicked => { root.sort-apps(1); }
+                                        }
+
+                                        HeaderCell {
+                                            width: 100px;
+                                            label: "Size";
+                                            active: root.sort-column == 2;
+                                            ascending: root.sort-ascending;
+                                            clicked => { root.sort-apps(2); }
+                                        }
+
+                                        HeaderCell {
+                                            width: 170px;
+                                            label: "Repository";
+                                            active: root.sort-column == 3;
+                                            ascending: root.sort-ascending;
+                                            clicked => { root.sort-apps(3); }
+                                        }
+
+                                        HeaderCell {
+                                            width: 190px;
+                                            label: "Update";
+                                            active: root.sort-column == 4;
+                                            ascending: root.sort-ascending;
+                                            clicked => { root.sort-apps(4); }
+                                        }
+                                    }
+
+                                    ListView {
+                                        vertical-stretch: 1;
+                                        min-height: 220px;
+
+                                        for app[index] in root.apps : Rectangle {
+                                            height: 40px;
+                                            border-radius: 6px;
+                                            background: index == root.selected-app ? #26262b : transparent;
+
+                                            TouchArea {
+                                                mouse-cursor: pointer;
+
+                                                clicked => { root.selected-app = index; }
+
+                                                pointer-event(event) => {
+                                                    if (event.button == PointerEventButton.right
+                                                        && event.kind == PointerEventKind.down) {
+                                                        root.menu-x = self.absolute-position.x + self.mouse-x;
+                                                        root.menu-y = self.absolute-position.y + self.mouse-y;
+                                                        root.menu-entry = index;
+                                                    }
+                                                }
+                                            }
+
+                                            HorizontalLayout {
+                                                padding-left: 6px;
+                                                padding-right: 6px;
+                                                spacing: 0px;
+
+                                                CheckBox {
+                                                    width: 34px;
+                                                    checked: app.checked;
+                                                    enabled: app.status == 2;
+                                                    toggled => { root.toggle-app(index); }
+                                                }
+
+                                                Text {
+                                                    text: app.name;
+                                                    color: #ececf0;
+                                                    horizontal-stretch: 1;
+                                                    vertical-alignment: center;
+                                                    overflow: elide;
+                                                }
+
+                                                Text {
+                                                    width: 90px;
+                                                    text: app.version;
+                                                    color: #b9b9c2;
+                                                    vertical-alignment: center;
+                                                    overflow: elide;
+                                                }
+
+                                                Text {
+                                                    width: 100px;
+                                                    text: app.size;
+                                                    color: #b9b9c2;
+                                                    vertical-alignment: center;
+                                                    overflow: elide;
+                                                }
+
+                                                Text {
+                                                    width: 170px;
+                                                    text: app.repository;
+                                                    color: #8a8a93;
+                                                    vertical-alignment: center;
+                                                    overflow: elide;
+                                                }
+
+                                                Text {
+                                                    width: 190px;
+                                                    text: app.update;
+                                                    color: app.status == 2 ? #ff9d3c : #8a8a93;
+                                                    vertical-alignment: center;
+                                                    overflow: elide;
+                                                }
+                                            }
+                                        }
+                                    }
+
+
+
+                                    Rectangle {
+                                        border-radius: 8px;
+                                        background: #17171a;
+                                        height: 132px;
+                                        vertical-stretch: 0;
+
+                                        VerticalLayout {
+                                            spacing: 0px;
+
+                                            ScrollView {
+                                                vertical-stretch: 1;
+
+                                                VerticalLayout {
+                                                    padding: 10px;
+
+                                                    Text {
+                                                        text: root.selected-app >= 0 ? root.apps[root.selected-app].description : "Select an app to read its description.";
+                                                        color: #b9b9c2;
+                                                        wrap: word-wrap;
+                                                    }
+                                                }
+                                            }
+
+                                            HorizontalLayout {
+                                                padding-left: 10px;
+                                                padding-right: 10px;
+                                                padding-bottom: 8px;
+
+                                                Text {
+                                                    text: "Right-click a row for actions: install, update, uninstall, reinstall.";
+                                                    color: #6f6f78;
+                                                    font-size: 11px;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                        
+
+                                if root.current-tab == 5 : VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 8px;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+
+                                        Text {
+                                            text: "Level";
+                                            color: #8a8a93;
+                                            vertical-alignment: center;
+                                        }
+
+                                        ComboBox {
+                                            width: 160px;
+                                            model: ["Errors only", "Normal", "Verbose"];
+                                            current-index: root.log-level;
+                                            selected(value) => {
+                                                root.set-log-level(value == "Errors only" ? 0 : (value == "Normal" ? 1 : 2));
+                                            }
+                                        }
+
+                                        Button {
+                                            text: "Clear";
+                                            icon: @image-url("icons/clear.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            clicked => { root.clear-log(); }
+                                        }
+
+                                        Button {
+                                            text: "Latest";
+                                            icon: @image-url("icons/latest.svg");
+                                            icon-size: 18px;
+                                            colorize-icon: true;
+                                            clicked => {
+                                            log-list.content-y = log-list.content-height;
+                                        }
+                                        }
+
+                                        Rectangle { horizontal-stretch: 1; }
+
+                                        Text {
+                                            text: root.log-file == "" ? "no log file" : root.log-file;
+                                            color: #6f6f78;
+                                            font-size: 11px;
+                                            vertical-alignment: center;
+                                            overflow: elide;
+                                            horizontal-stretch: 1;
+                                            horizontal-alignment: right;
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        vertical-stretch: 1;
+                                        spacing: 6px;
+
+                                        log-list := ListView {
+                                            horizontal-stretch: 1;
+                                            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+
+                                            for line in root.log-lines : Text {
+                                                height: 17px;
+                                                width: parent.width;
+                                                text: line;
+                                                color: #b9b9c2;
+                                                font-size: 12px;
+                                                font-family: "monospace";
+                                                vertical-alignment: center;
+                                                overflow: elide;
+                                            }
+                                        }
+
+                                        log-track := Rectangle {
+                                            width: 10px;
+                                            background: #1c1c20;
+                                            border-radius: 5px;
+
+                                            log-handle := Rectangle {
+                                                width: parent.width;
+                                                height: max(28px, log-track.height * log-list.height / max(1px, log-list.content-height));
+                                                y: (log-track.height - self.height) * min(1, max(0, log-list.content-y / max(1px, log-list.content-height - log-list.height)));
+                                                border-radius: 5px;
+                                                background: #3f3f48;
+                                            }
+
+                                            TouchArea {
+                                                mouse-cursor: pointer;
+
+                                                moved => {
+                                                    if (self.pressed) {
+                                                        log-list.content-y = max(0px, (self.mouse-y / log-track.height) * (log-list.content-height - log-list.height));
+                                                    }
+                                                }
+
+                                                clicked => {
+                                                    log-list.content-y = max(0px, (self.mouse-y / log-track.height) * (log-list.content-height - log-list.height));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                        
+                        }
+                    }
+
+                }
+            }
+    }
+    app-menu := PopupWindow {
+        x: root.menu-x;
+        y: root.menu-y;
+        width: 190px;
+        height: 148px;
+        close-policy: close-on-click;
+
+        Rectangle {
+            background: #1c1c20;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: #34343c;
+
+            VerticalLayout {
+                padding: 6px;
+                spacing: 2px;
+
+                ContextMenuItem {
+                    label: "Install";
+                    enabled: root.menu-entry >= 0 && root.apps[root.menu-entry].status == 0;
+                    clicked => {
+                        root.install-entry(root.menu-entry);
+                        app-menu.close();
+                    }
+                }
+
+                ContextMenuItem {
+                    label: "Update";
+                    enabled: root.menu-entry >= 0 && root.apps[root.menu-entry].status == 2;
+                    clicked => {
+                        root.update-entry(root.menu-entry);
+                        app-menu.close();
+                    }
+                }
+
+                ContextMenuItem {
+                    label: "Uninstall";
+                    enabled: root.menu-entry >= 0 && root.apps[root.menu-entry].status >= 1;
+                    clicked => {
+                        root.uninstall-entry(root.menu-entry);
+                        app-menu.close();
+                    }
+                }
+
+                ContextMenuItem {
+                    label: "Reinstall";
+                    enabled: root.menu-entry >= 0 && root.apps[root.menu-entry].status >= 1;
+                    clicked => {
+                        root.reinstall-entry(root.menu-entry);
+                        app-menu.close();
+                    }
+                }
+            }
+        }
+    }
+
+        // ------------------------------------------------------------------
+        // Status bar
+        // ------------------------------------------------------------------
+        Rectangle {
+            y: root.height - 32px;
+            width: 100%;
+            height: 32px;
+            background: #17171a;
+
+            Rectangle {
+                y: 0;
+                width: parent.width;
+                height: 1px;
+                background: #26262b;
+            }
+
+            HorizontalLayout {
+                padding-left: 22px;
+                padding-right: 22px;
+                spacing: 12px;
+
+                Text {
+                    text: root.status;
+                    color: #8a8a93;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+
+                Text {
+                    text: root.progress-text;
+                    color: #8a8a93;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                    visible: root.busy && root.progress-text != "";
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    visible: root.busy;
+
+                    ProgressIndicator {
+                        width: 180px;
+                        height: 6px;
+                        progress: root.progress;
+                        indeterminate: root.busy && root.progress <= 0.001;
+                    }
+                }
+            }
+        }
+}

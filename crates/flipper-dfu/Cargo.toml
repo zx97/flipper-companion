@@ -1,0 +1,19 @@
+[package]
+name = "flipper-companion-dfu"
+description = "DFU and DfuSe parsing and flashing for the Flipper Zero, implemented in pure Rust over USB."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+flipper-companion-core.workspace = true
+nusb.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
