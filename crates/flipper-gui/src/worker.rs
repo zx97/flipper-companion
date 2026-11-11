@@ -923,7 +923,9 @@ async fn install_update(
                         .is_none_or(|serial| device.usb.serial_number.as_deref() == Some(serial))
             })
             .or_else(|| devices.iter().find(|device| !device.is_dfu()))
-            .ok_or_else(|| flipper_companion_app::AppError::Bundle(String::from("no running Flipper")))?;
+            .ok_or_else(|| {
+                flipper_companion_app::AppError::Bundle(String::from("no running Flipper"))
+            })?;
 
         let target = device.target().unwrap_or("f18").to_owned();
         let directory = companion.firmware_directory().await?;
@@ -940,8 +942,8 @@ async fn install_update(
             release.version
         )));
 
-        let temporary =
-            tempfile::tempdir().map_err(|error| flipper_companion_app::AppError::Join(error.to_string()))?;
+        let temporary = tempfile::tempdir()
+            .map_err(|error| flipper_companion_app::AppError::Join(error.to_string()))?;
 
         let sender = events.clone();
         let mut last_percent = -1;
@@ -1446,10 +1448,9 @@ async fn device_context(
             flipper_companion_app::AppError::App(String::from("no running Flipper is connected"))
         })?;
 
-    let info = device
-        .info
-        .as_ref()
-        .ok_or_else(|| flipper_companion_app::AppError::App(String::from("device info unavailable")))?;
+    let info = device.info.as_ref().ok_or_else(|| {
+        flipper_companion_app::AppError::App(String::from("device info unavailable"))
+    })?;
 
     let api = info
         .firmware

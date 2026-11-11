@@ -101,7 +101,11 @@ pub async fn run(
     result
 }
 
-async fn list(session: &flipper_companion_protocol::RpcSession, path: &str, json_output: bool) -> Result<()> {
+async fn list(
+    session: &flipper_companion_protocol::RpcSession,
+    path: &str,
+    json_output: bool,
+) -> Result<()> {
     let mut entries = session.storage_list(path).await?;
 
     entries.sort_by(|left, right| {

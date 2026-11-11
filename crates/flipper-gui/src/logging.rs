@@ -329,7 +329,10 @@ mod tests {
 
         assert!(line.contains("1.500"), "{line}");
         assert!(line.contains("INFO"), "{line}");
-        assert!(line.contains("flipper_companion_app: scan: 1 device"), "{line}");
+        assert!(
+            line.contains("flipper_companion_app: scan: 1 device"),
+            "{line}"
+        );
     }
 
     #[test]

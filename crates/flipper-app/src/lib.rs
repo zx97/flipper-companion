@@ -10,7 +10,9 @@ use std::{
 };
 
 use flipper_companion_core::{DeviceInfo, ProtobufVersion, StorageInfo, UsbDevice, UsbMode};
-use flipper_companion_dfu::{DfuDevice, DfuError, DfuseFile, FlashProgress, NusbTransport, list_devices};
+use flipper_companion_dfu::{
+    DfuDevice, DfuError, DfuseFile, FlashProgress, NusbTransport, list_devices,
+};
 use flipper_companion_protocol::pb::CommandStatus;
 use flipper_companion_protocol::pb_system;
 use flipper_companion_protocol::{

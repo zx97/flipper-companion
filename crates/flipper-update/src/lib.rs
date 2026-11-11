@@ -154,7 +154,9 @@ impl Release {
             Some(version) => {
                 let (release, rc) = match version.pre {
                     None => (1, 0),
-                    Some(flipper_companion_core::PreRelease::Rc(number)) => (0, number.unwrap_or(0)),
+                    Some(flipper_companion_core::PreRelease::Rc(number)) => {
+                        (0, number.unwrap_or(0))
+                    }
                 };
 
                 (
