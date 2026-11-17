@@ -330,9 +330,14 @@ mod tests {
 
     #[test]
     fn firmware_supports_file_urls() {
+        // Build the URL from a real path so the test works on Windows too:
+        // `file:///tmp/...` maps to a different drive there.
+        let path = std::env::temp_dir().join("fw.tgz");
+        let url = url::Url::from_file_path(&path).unwrap();
+
         assert_eq!(
-            "file:///tmp/fw.tgz".parse::<FirmwareSource>().unwrap(),
-            FirmwareSource::Local(PathBuf::from("/tmp/fw.tgz"))
+            url.as_str().parse::<FirmwareSource>().unwrap(),
+            FirmwareSource::Local(path)
         );
     }
 

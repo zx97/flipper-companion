@@ -4,7 +4,7 @@
 //! can be simple JSON indexes using the format documented in
 //! `docs/apps.md`.
 
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use flipper_companion_core::Progress;
 use serde::{Deserialize, Serialize};
@@ -561,11 +561,11 @@ fn sanitize_component(value: &str, fallback: &str) -> String {
 /// Path of the user source list.
 #[must_use]
 pub fn app_sources_path() -> Option<PathBuf> {
-    let base = env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
-
-    Some(base.join("flipper-companion").join("app-sources.txt"))
+    Some(
+        flipper_companion_core::paths::config_dir()?
+            .join("flipper-companion")
+            .join("app-sources.txt"),
+    )
 }
 
 /// Loads the custom JSON index URLs.

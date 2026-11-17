@@ -11,7 +11,7 @@
 //! reloaded in place, so debug logging is only formatted when it is shown.
 
 use std::{
-    env, fmt, fs,
+    fmt, fs,
     io::Write,
     path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
@@ -280,9 +280,7 @@ impl FileSink {
 }
 
 fn data_dir() -> Option<PathBuf> {
-    env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
+    flipper_companion_core::paths::data_dir()
 }
 
 /// Shifts the previous runs to `.1` … `.9` so a fresh run starts unnumbered.

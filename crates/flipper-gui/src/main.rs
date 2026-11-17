@@ -1331,8 +1331,8 @@ fn join_remote(base: &str, name: &str) -> String {
 
 /// Default download directory (`~/Downloads`).
 fn downloads_dir() -> String {
-    std::env::var_os("HOME").map_or_else(String::new, |home| {
-        PathBuf::from(home).join("Downloads").display().to_string()
+    flipper_companion_core::paths::downloads_dir().map_or_else(String::new, |path| {
+        path.display().to_string()
     })
 }
 
@@ -1345,11 +1345,11 @@ fn channel_name(index: i32) -> String {
 }
 
 fn config_path() -> Option<PathBuf> {
-    let base = env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
-
-    Some(base.join("flipper-companion").join("config.toml"))
+    Some(
+        flipper_companion_core::paths::config_dir()?
+            .join("flipper-companion")
+            .join("config.toml"),
+    )
 }
 
 fn load_channel() -> i32 {

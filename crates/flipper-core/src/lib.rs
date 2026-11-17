@@ -7,6 +7,7 @@
 pub mod device;
 pub mod error;
 pub mod firmware;
+pub mod paths;
 pub mod progress;
 pub mod storage;
 pub mod version;
