@@ -1393,7 +1393,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "flipper-companion-app",
@@ -1413,7 +1413,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-app"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "flate2",
  "flipper-companion-core",
@@ -1436,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-cli"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1456,7 +1456,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-core"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -1464,7 +1464,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-dfu"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "flipper-companion-core",
  "nusb",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-project"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "serde",
@@ -1485,7 +1485,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-protocol"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "bytes",
  "flipper-companion-core",
@@ -1502,7 +1502,7 @@ dependencies = [
 
 [[package]]
 name = "flipper-companion-update"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "flate2",
  "flipper-companion-core",

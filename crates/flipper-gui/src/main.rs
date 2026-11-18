@@ -1331,9 +1331,8 @@ fn join_remote(base: &str, name: &str) -> String {
 
 /// Default download directory (`~/Downloads`).
 fn downloads_dir() -> String {
-    flipper_companion_core::paths::downloads_dir().map_or_else(String::new, |path| {
-        path.display().to_string()
-    })
+    flipper_companion_core::paths::downloads_dir()
+        .map_or_else(String::new, |path| path.display().to_string())
 }
 
 fn channel_name(index: i32) -> String {

@@ -288,6 +288,23 @@ sudo dnf install ./flipper-companion-0.8.1-1.x86_64.rpm
 The desktop application links against the system font and TLS stacks
 (fontconfig, freetype, OpenSSL), which the packages pull in automatically.
 
+### Windows
+
+Tested on Windows 10 22H2 with Rust 1.100. Build from source with either the
+MSVC toolchain (Visual Studio Build Tools) or the GNU toolchain:
+
+```powershell
+rustup toolchain install stable-x86_64-pc-windows-gnu
+rustup component add rust-mingw --toolchain stable-x86_64-pc-windows-gnu
+# GNU builds need MinGW-w64 (dlltool/gcc) on PATH, e.g. winlibs
+cargo +stable-x86_64-pc-windows-gnu build --release --workspace
+```
+
+The binaries are `target\release\flipper-companion.exe` (desktop) and
+`target\release\flipper.exe` (CLI). The RPC serial port uses the standard
+CDC driver; flashing in DFU mode needs the WinUSB driver, which the official
+qFlipper installer already provides.
+
 ### From source
 
 ```sh

@@ -38,3 +38,21 @@ jobs:
 
       - name: Build
         run: cargo build --release --locked --workspace
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Personal data check
+        run: python tools/check_anonymity.py
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Build
+        run: cargo build --release --locked --workspace

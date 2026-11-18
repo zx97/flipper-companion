@@ -12,24 +12,23 @@ members = [
 ]
 
 [workspace.package]
-version = "0.8.1"
+version = "0.8.2"
 edition = "2024"
 rust-version = "1.90"
 authors = ["flipper-companion contributors"]
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/zx97/flipper-companion"
-homepage = "https://github.com/zx97/flipper-companion"
 keywords = ["flipper", "flipper-zero", "usb", "dfu", "hardware"]
 categories = ["command-line-utilities", "hardware-support"]
 
 [workspace.dependencies]
 # Internal crates
-flipper-companion-core = { path = "crates/flipper-core", version = "0.8.1" }
-flipper-companion-dfu = { path = "crates/flipper-dfu", version = "0.8.1" }
-flipper-companion-project = { path = "crates/flipper-project", version = "0.8.1" }
-flipper-companion-protocol = { path = "crates/flipper-protocol", version = "0.8.1" }
-flipper-companion-update = { path = "crates/flipper-update", version = "0.8.1" }
-flipper-companion-app = { path = "crates/flipper-app", version = "0.8.1" }
+flipper-companion-core = { path = "crates/flipper-core", version = "0.8.2" }
+flipper-companion-dfu = { path = "crates/flipper-dfu", version = "0.8.2" }
+flipper-companion-project = { path = "crates/flipper-project", version = "0.8.2" }
+flipper-companion-protocol = { path = "crates/flipper-protocol", version = "0.8.2" }
+flipper-companion-update = { path = "crates/flipper-update", version = "0.8.2" }
+flipper-companion-app = { path = "crates/flipper-app", version = "0.8.2" }
 
 # Runtime / async
 anyhow = "1"

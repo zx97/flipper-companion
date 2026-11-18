@@ -101,8 +101,38 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  windows:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows
+      - name: Personal data check
+        run: python tools/check_anonymity.py
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Build
+        run: cargo build --release --locked --workspace
+      - name: Stage the zip
+        shell: pwsh
+        run: |
+          $v = "${{ needs.version.outputs.version }}"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path target/release/flipper.exe,
+            target/release/flipper-companion.exe, LICENSE, README.md,
+            CHANGELOG.md, NOTICE.md, docs `
+            -DestinationPath "dist/flipper-companion-$v-windows-x86_64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flipper-companion-windows
+          path: dist/*
+          if-no-files-found: error
+
   package:
-    needs: [version, build]
+    needs: [version, build, windows]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -140,7 +170,7 @@ jobs:
           done
           # The binaries in dist/ are only needed for packaging.
           rm -f dist/flipper dist/flipper-companion
-          (cd dist && sha256sum ./*.tar.gz ./*.deb ./*.rpm > SHA256SUMS)
+          (cd dist && sha256sum ./*.tar.gz ./*.deb ./*.rpm ./*.zip > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: packages
@@ -148,6 +178,7 @@ jobs:
             dist/*.tar.gz
             dist/*.deb
             dist/*.rpm
+            dist/*.zip
             dist/SHA256SUMS
           if-no-files-found: error
 
