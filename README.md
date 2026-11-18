@@ -301,7 +301,17 @@ cargo +stable-x86_64-pc-windows-gnu build --release --workspace
 ```
 
 The binaries are `target\release\flipper-companion.exe` (desktop) and
-`target\release\flipper.exe` (CLI). The RPC serial port uses the standard
+`target\release\flipper.exe` (CLI).
+
+Build on a local NTFS volume (`C:`).  Cargo executes the compiled build
+scripts from `target\release\build\...`, and Windows can refuse that on a
+network or shared folder (`Accès refusé`, os error 5).  If the source must
+stay elsewhere, move only the build directory:
+
+```powershell
+$env:CARGO_TARGET_DIR = "C:\cargo\flipper-companion"
+cargo +stable-x86_64-pc-windows-gnu build --release --workspace
+``` The RPC serial port uses the standard
 CDC driver; flashing in DFU mode needs the WinUSB driver, which the official
 qFlipper installer already provides.
 
