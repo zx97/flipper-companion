@@ -19,7 +19,6 @@ authors = ["flipper-companion contributors"]
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/zx97/flipper-companion"
 homepage = "https://github.com/zx97/flipper-companion"
-description = "A modern, memory-safe desktop companion for the Flipper Zero"
 keywords = ["flipper", "flipper-zero", "usb", "dfu", "hardware"]
 categories = ["command-line-utilities", "hardware-support"]
 
@@ -42,7 +41,6 @@ tokio-util = { version = "0.7", features = ["codec"] }
 
 # Hardware
 nusb = "0.2"
-serialport = "4"
 
 # Protocol
 prost = "0.14"
